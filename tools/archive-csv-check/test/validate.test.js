@@ -106,7 +106,7 @@ test('recognizes only real ISO 8601 UTC timestamps', () => {
   }
 });
 
-test('requires every required column exactly once', () => {
+test('requires each logical header field and rejects duplicate names', () => {
   const missing = validate('subreddit,title,score,num_comments,created_utc\n');
   assert.equal(missing.valid, false);
   assert.equal(missing.rows.checked, false);
