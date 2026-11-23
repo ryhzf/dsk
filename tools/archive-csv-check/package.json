@@ -1,0 +1,16 @@
+{
+  "name": "archive-csv-check",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone acceptance checker for Reddit Archive CSV exports",
+  "license": "UNLICENSED",
+  "bin": {
+    "archive-csv-check": "index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

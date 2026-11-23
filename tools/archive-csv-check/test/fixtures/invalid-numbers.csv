@@ -1,0 +1,12 @@
+subreddit,title,score,upvote_ratio,num_comments,created_utc
+programming,"Good row",128,0.93,45,1700000000.0
+programming,"Score text",not-a-number,0.5,3,1700000000
+programming,"Ratio too high",10,1.2,3,1700000000
+programming,"Ratio negative",10,-0.1,3,1700000000
+programming,"Ratio NaN",10,NaN,3,1700000000
+programming,"Bad comments",10,0.5,-2,1700000000
+programming,"Bad timestamp",10,0.5,2,yesterday
+programming,"Missing field",10,0.5
+programming,"Extra field",10,0.5,2,1700000000,extra
+programming,"",10,0.5,2,1700000000
+programming,"Score with plus",+5,0.5,2,1700000000
