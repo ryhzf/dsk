@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reddit Archive 自助服务 Demo</title>
+    <meta
+      name="description"
+      content="使用合成数据与本地状态的 Reddit Archive 归档检索、积分充值与 CSV 导出演示。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="13" y="9" width="38" height="7" rx="3.5" fill="currentColor" />
+            <path
+              d="M18 21h28l4.5 25.5a4 4 0 0 1-3.9 4.7H17.4a4 4 0 0 1-3.9-4.7L18 21Z"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M24 31h16M24 39h16M24 47h10"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <circle cx="50" cy="14" r="4.5" fill="#b06a1f" />
+          </svg>
+        </span>
+        <div class="brand-copy">
+          <p class="eyebrow">LOCAL DEMO · 合成数据</p>
+          <h1>Reddit Archive <span>自助服务</span></h1>
+          <p class="tagline">
+            检索三个虚构 subreddit 的归档帖子，用模拟积分导出当前结果为 CSV。
+          </p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <p class="disclaimer">
+          演示项目，与 Reddit 官方无关；不连接真实 Reddit、支付或后端。
+        </p>
+        <p class="offline-badge"><span class="dot" aria-hidden="true"></span> 无网络请求 · 状态在本机</p>
+      </div>
+    </header>
+
+    <main id="main" class="layout" tabindex="-1">
+      <aside class="wallet card" aria-labelledby="wallet-heading">
+        <div class="wallet-heading-row">
+          <h2 id="wallet-heading">积分钱包</h2>
+          <span class="local-badge" id="storage-badge">本地保存</span>
+        </div>
+
+        <p class="balance-label">当前余额</p>
+        <p class="balance">
+          <span id="balance-value">0</span><span class="balance-unit">积分</span>
+        </p>
+
+        <p class="low-balance" id="low-balance" role="status" hidden>
+          余额不足 3 积分，导出前请先充值。
+        </p>
+
+        <div class="topup-actions" role="group" aria-label="模拟充值">
+          <button
+            class="button topup-button"
+            type="button"
+            data-topup="10"
+            aria-haspopup="dialog"
+            aria-controls="topup-dialog"
+          >
+            充值 10 积分
+          </button>
+          <button
+            class="button topup-button"
+            type="button"
+            data-topup="25"
+            aria-haspopup="dialog"
+            aria-controls="topup-dialog"
+          >
+            充值 25 积分
+          </button>
+        </div>
+        <p class="wallet-hint">
+          模拟充值，不产生真实支付。确认后只入账一次；取消不会改变余额。
+        </p>
+
+        <p class="status" id="wallet-status" role="status" aria-live="polite" hidden></p>
+
+        <section class="history" aria-labelledby="history-heading">
+          <div class="history-heading-row">
+            <h3 id="history-heading">交易记录</h3>
+            <span class="history-count" id="transaction-count">0 笔</span>
+          </div>
+          <ol class="transaction-list" id="transaction-list"></ol>
+          <p class="muted history-empty" id="history-empty">还没有交易记录。</p>
+        </section>
+      </aside>
+
+      <section class="catalog" aria-labelledby="catalog-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ARCHIVE BROWSER</p>
+            <h2 id="catalog-heading">归档浏览器</h2>
+          </div>
+          <p class="section-meta">
+            <strong>15</strong> 条合成帖子 · 3 个虚构 subreddit
+          </p>
+        </div>
+
+        <div class="chips" id="subreddit-chips" aria-label="快速筛选 subreddit"></div>
+
+        <form class="filters card" id="filters" role="search" aria-label="筛选归档帖子">
+          <div class="field field-search">
+            <label for="search">搜索 subreddit</label>
+            <input
+              id="search"
+              name="search"
+              type="search"
+              placeholder="例如 mossy 或 纸潮"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="field">
+            <label for="from-date">开始日期（UTC）</label>
+            <input id="from-date" name="from" type="date" min="2026-01-01" max="2026-12-31" />
+          </div>
+          <div class="field">
+            <label for="to-date">结束日期（UTC）</label>
+            <input id="to-date" name="to" type="date" min="2026-01-01" max="2026-12-31" />
+          </div>
+          <div class="field">
+            <label for="sort">排序</label>
+            <select id="sort" name="sort">
+              <option value="newest">发布时间：最新优先</option>
+              <option value="oldest">发布时间：最早优先</option>
+              <option value="score-desc">净赞分：从高到低</option>
+              <option value="score-asc">净赞分：从低到高</option>
+            </select>
+          </div>
+          <button id="clear-filters" class="button ghost clear-filters" type="button">
+            清除筛选
+          </button>
+        </form>
+
+        <p class="date-hint">日期范围为 UTC，包含首尾两天。</p>
+
+        <div class="export-bar card">
+          <div class="export-copy">
+            <p class="export-line">
+              <strong id="match-count">15</strong> 条匹配 · 每次导出
+              <strong>3 积分</strong> · 当前余额
+              <strong id="export-balance">0</strong> 积分
+            </p>
+            <p class="export-note">
+              只导出当前筛选与排序下的行。空结果或余额不足时不扣积分。
+            </p>
+          </div>
+          <button
+            id="export-button"
+            class="button primary export-button"
+            type="button"
+            aria-describedby="export-price-note"
+          >
+            导出 CSV（3 积分）
+          </button>
+        </div>
+        <p id="export-price-note" class="sr-only">
+          每次成功导出扣除 3 积分，价格提前显示在按钮与摘要中。
+        </p>
+
+        <p class="status" id="export-status" role="status" aria-live="polite" hidden></p>
+
+        <div class="table-wrap">
+          <table id="posts-table" aria-describedby="table-summary">
+            <caption class="sr-only" id="table-summary">
+              按当前筛选与排序显示的归档帖子
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Subreddit</th>
+                <th scope="col">标题</th>
+                <th scope="col">发布时间（UTC）</th>
+                <th scope="col" class="align-right">净赞分</th>
+                <th scope="col" class="align-right">赞成比例</th>
+                <th scope="col" class="align-right">评论数</th>
+              </tr>
+            </thead>
+            <tbody id="posts-body"></tbody>
+          </table>
+        </div>
+
+        <div class="empty-state card" id="empty-state" hidden>
+          <p class="empty-kicker">0 条结果</p>
+          <p class="empty-title">没有匹配的帖子</p>
+          <p class="muted">试试清除日期范围，或搜索另一个 subreddit。</p>
+          <button id="empty-clear" class="button" type="button">清除全部筛选</button>
+        </div>
+
+        <p class="catalog-footnote">
+          所有帖子、subreddit 名称与文案均为本演示原创的合成内容。
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Reddit Archive 自助服务 Demo · 本地运行，无后端</p>
+      <p>合成数据 · 模拟积分 · 不构成真实服务</p>
+    </footer>
+
+    <dialog
+      id="topup-dialog"
+      class="dialog"
+      aria-labelledby="topup-title"
+      aria-describedby="topup-desc"
+    >
+      <form method="dialog" class="dialog-inner">
+        <p class="eyebrow">模拟充值</p>
+        <h2 id="topup-title">确认充值 10 积分？</h2>
+        <p id="topup-desc" class="dialog-desc">
+          确认后，10 积分会立即入账且只入账一次。余额与交易记录会保存在当前浏览器中。
+        </p>
+        <div class="dialog-actions">
+          <button class="button ghost" type="submit" value="cancel" autofocus>取消</button>
+          <button id="topup-confirm" class="button primary" type="submit" value="confirm">
+            确认充值 10 积分
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <noscript>
+      <p class="noscript-warning">此演示需要启用 JavaScript。</p>
+    </noscript>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
