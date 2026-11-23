@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f1eb" />
+    <title>导出历史 · Reddit 归档 Demo</title>
+    <meta
+      name="description"
+      content="Reddit 归档导出历史演示：合成记录、subreddit 与状态筛选、详情、空态和移动端布局。"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23d1542e'/%3E%3Cpath d='M30 40h40v32H30z' fill='none' stroke='white' stroke-width='6'/%3E%3Cpath d='M26 28h48v10H26z' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#recordsSection">跳到导出记录</a>
+
+    <div class="page">
+      <header class="page-header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3.5 4.5h17v4h-17z" />
+              <path d="M4.5 8.5h15v11h-15z" />
+              <path d="M12 11.5v4.5" />
+              <path d="m9.6 13.9 2.4 2.4 2.4-2.4" />
+            </svg>
+          </span>
+          <div>
+            <p class="eyebrow">Reddit Archive Tool · Demo</p>
+            <h1>导出历史</h1>
+          </div>
+        </div>
+        <span class="demo-pill"><span class="dot" aria-hidden="true"></span>演示模式</span>
+      </header>
+
+      <p class="lede">
+        查看每次 Reddit 归档导出的帖子数量、完成状态与扣分。列表支持按 subreddit
+        和状态筛选，并可展开单次导出的完整明细。
+      </p>
+
+      <aside class="notice" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10.8v5.2" />
+          <path d="M12 7.8h.01" />
+        </svg>
+        <p>
+          <strong>合成数据</strong>：以下 12 条记录均为本地模拟，不包含真实 Reddit
+          内容；所有操作只在浏览器内完成，无后端请求。时间均为北京时间（UTC+8）。
+        </p>
+      </aside>
+
+      <section class="stats" aria-label="当前筛选汇总">
+        <div class="stat">
+          <span class="stat-label">导出记录</span>
+          <p class="stat-number"><span id="statRecords">0</span><span class="stat-unit">次</span></p>
+        </div>
+        <div class="stat">
+          <span class="stat-label">归档帖子</span>
+          <p class="stat-number"><span id="statPosts">0</span><span class="stat-unit">篇</span></p>
+        </div>
+        <div class="stat">
+          <span class="stat-label">累计扣分</span>
+          <p class="stat-number"><span id="statDeduction">0</span><span class="stat-unit">分</span></p>
+        </div>
+      </section>
+
+      <section class="panel" id="recordsSection" aria-labelledby="recordsHeading">
+        <div class="toolbar">
+          <div class="filters">
+            <div class="field">
+              <label for="subredditFilter">Subreddit</label>
+              <select id="subredditFilter" name="subreddit">
+                <option value="all">全部 Subreddit</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="statusFilter">状态</label>
+              <select id="statusFilter" name="status">
+                <option value="all">全部状态</option>
+              </select>
+            </div>
+          </div>
+          <button class="button button-ghost" id="resetFilters" type="button">
+            清除筛选
+          </button>
+        </div>
+
+        <div class="list-head">
+          <h2 id="recordsHeading">导出记录</h2>
+          <p class="result-count" id="resultCount" role="status" aria-live="polite">
+            正在载入…
+          </p>
+        </div>
+
+        <div class="table-header" id="tableHeader" aria-hidden="true">
+          <span>导出时间</span>
+          <span>Subreddit</span>
+          <span>帖子数</span>
+          <span>状态</span>
+          <span>扣分</span>
+          <span>操作</span>
+        </div>
+
+        <ul class="record-list" id="recordList" aria-label="导出历史列表"></ul>
+
+        <div class="empty-state" id="emptyState" hidden>
+          <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 15h30v23H9z" />
+              <path d="M7 8h34v7H7z" />
+              <path d="M18 23h12" />
+              <path d="M35 34h7" />
+            </svg>
+          </span>
+          <h3>没有符合条件的记录</h3>
+          <p id="emptyHint">
+            当前筛选条件下没有导出记录。试试更换 Subreddit 或状态，或清除筛选查看全部记录。
+          </p>
+          <button class="button button-primary" id="emptyReset" type="button">
+            清除筛选
+          </button>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <span>本地演示 · 无后端 · 数据不会离开浏览器</span>
+        <span>时间口径：Asia/Shanghai（UTC+8）</span>
+      </footer>
+    </div>
+
+    <dialog class="detail-dialog" id="detailDialog" aria-labelledby="detailTitle">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">导出详情</p>
+            <h2 id="detailTitle">—</h2>
+            <p class="dialog-sub" id="detailSub">—</p>
+          </div>
+          <button class="icon-button" id="closeDetail" type="button" aria-label="关闭详情">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="detail-badges">
+          <span class="badge" id="detailStatus">—</span>
+          <span class="deduction-chip" id="detailDeduction">—</span>
+        </div>
+
+        <p class="dialog-summary" id="detailSummary">—</p>
+
+        <dl class="detail-grid">
+          <div>
+            <dt>导出时间</dt>
+            <dd id="detailTime">—</dd>
+          </div>
+          <div>
+            <dt>帖子数</dt>
+            <dd id="detailPosts">—</dd>
+          </div>
+          <div>
+            <dt>导出范围</dt>
+            <dd id="detailRange">—</dd>
+          </div>
+          <div>
+            <dt>用时</dt>
+            <dd id="detailDuration">—</dd>
+          </div>
+        </dl>
+
+        <section class="dialog-section" aria-labelledby="detailDeductionHeading">
+          <h3 id="detailDeductionHeading">扣分明细</h3>
+          <ul class="deduction-list" id="detailDeductions"></ul>
+          <p class="no-deduction" id="detailNoDeduction" hidden>
+            无扣分，本次导出完整。
+          </p>
+        </section>
+
+        <section class="dialog-section" aria-labelledby="detailNoteHeading">
+          <h3 id="detailNoteHeading">备注</h3>
+          <p class="detail-note" id="detailNote">—</p>
+        </section>
+      </div>
+    </dialog>
+
+    <noscript>
+      <p class="noscript">此 Demo 需要启用 JavaScript 才能展示导出记录与筛选。</p>
+    </noscript>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
