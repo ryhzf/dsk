@@ -25,8 +25,9 @@ npm test             # 单元测试，32 项
 npm run test:e2e     # 浏览器端到端测试，7 项
 ```
 
-如果本机已安装 Google Chrome，也可以用 `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`
-跳过 Chromium 下载。
+E2E 默认在独立的 `4273` 端口启动测试服务器，避免与 `npm start` 的 `4173`
+或本机其他预览冲突；可用 `PLAYWRIGHT_PORT` 覆盖。如果本机已安装 Google Chrome，也可以用
+`PLAYWRIGHT_CHANNEL=chrome npm run test:e2e` 跳过 Chromium 下载。
 
 ## 功能
 
@@ -107,6 +108,8 @@ location.reload();
 5. 空结果、0 余额、1 余额均不扣费；连续导出精确到 7/4/1。
 6. 390×844 下钱包、筛选、导出可用且无横向溢出。
 7. 仅键盘完成取消、确认充值、筛选与导出。
+
+以上两套测试已在远程分支的全新 clone 上执行 `npm ci` 后重跑通过。
 
 证据截图位于 `docs/evidence/`。这是全新项目：基线 `main@38175ce` 只有 README、
 没有可运行的 Web UI；`before-main-*.png` 是基线目录的真实截图，作为“改造前”记录。

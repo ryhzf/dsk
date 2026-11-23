@@ -23,9 +23,11 @@ function topUpButton(page, amount) {
 
 async function resetState(page) {
   await page.goto(BASE_URL);
+  await page.locator('#balance-value').waitFor({ state: 'visible' });
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForLoadState('networkidle');
+  await page.locator('#balance-value').waitFor({ state: 'visible' });
 }
 
 async function topUp(page, amount) {
