@@ -3,7 +3,11 @@
 const fs = require('node:fs');
 
 const { CsvParseError, parseCsv } = require('./csv');
-const { REQUIRED_COLUMNS, validateRecords } = require('./validate');
+const {
+  REQUIRED_COLUMNS_DESCRIPTION,
+  normalizeSubredditName,
+  validateRecords,
+} = require('./validate');
 
 const USAGE = `Usage: node tools/archive-csv-check/index.js <csv-file> --subreddit <name[,name...]>
 
@@ -14,11 +18,11 @@ Arguments:
 
 Options:
   -s, --subreddit <names>    Expected subreddit scope, comma-separated and/or
-                             repeatable. Matching is case-insensitive.
+                             repeatable. Case-insensitive; r/ is optional.
   -h, --help                 Show this help.
 
 Required columns:
-  ${REQUIRED_COLUMNS.join(', ')}
+  ${REQUIRED_COLUMNS_DESCRIPTION}
 
 Exit codes:
   0  The file is valid.
@@ -105,7 +109,7 @@ function normalizeSubreddits(values) {
 
   for (const value of values) {
     for (const part of value.split(',')) {
-      const name = part.trim().toLowerCase();
+      const name = normalizeSubredditName(part).toLowerCase();
       if (name !== '' && !seen.has(name)) {
         seen.add(name);
         names.push(name);

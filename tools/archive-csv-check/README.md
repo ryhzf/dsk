@@ -30,8 +30,19 @@ node index.js export.csv -s programming -s learnprogramming
 node index.js export.csv --subreddit=programming,learnprogramming
 ```
 
-Matching is case-insensitive, so `Programming` in the CSV matches the expected
-`programming`.
+Matching is case-insensitive and a leading `r/` is ignored, so
+`r/Programming` in the CSV matches the expected `programming`. Expected scope
+values may also be written with the prefix.
+
+The website's current export format is accepted directly:
+
+```sh
+node tools/archive-csv-check/index.js export.csv \
+  --subreddit r/mossy_circuits,r/paper_tides,r/quiet_orbit
+```
+
+Its subreddit values are `r/`-prefixed, times use `created_at` ISO 8601 UTC
+strings, and comment counts use `comments`.
 
 ### Options
 
@@ -45,21 +56,31 @@ Matching is case-insensitive, so `Programming` in the CSV matches the expected
 The header must contain each of these columns exactly once, in any order:
 
 ```text
-subreddit, title, score, upvote_ratio, num_comments, created_utc
+subreddit, title, score, upvote_ratio
 ```
 
-Extra columns are allowed. Header problems are always reported on line 1.
+For the comment count and creation time, either the canonical column or the
+website alias is accepted:
+
+| Canonical | Website alias | Meaning |
+| --- | --- | --- |
+| `num_comments` | `comments` | Non-negative integer comment count. |
+| `created_utc` | `created_at` | `created_utc` is a non-negative Unix timestamp in seconds; `created_at` is an ISO 8601 UTC timestamp ending in `Z`, e.g. `2026-08-14T09:30:00.000Z`. |
+
+At least one column from each pair must be present. If both are present, both
+are validated. Extra columns are allowed. Header problems are always reported
+on line 1.
 
 Every data row is checked for:
 
 | Field | Rule |
 | --- | --- |
-| `subreddit` | Non-empty and inside the expected scope. |
+| `subreddit` | Non-empty and inside the expected scope. A leading `r/` is accepted and ignored for comparison; matching is case-insensitive. |
 | `title` | Non-empty. |
 | `score` | Integer; negative values are valid. |
 | `upvote_ratio` | Number from 0 to 1 inclusive. |
-| `num_comments` | Non-negative integer. |
-| `created_utc` | Non-negative number; fractional seconds are accepted. |
+| `comments` / `num_comments` | Non-negative integer. |
+| `created_at` / `created_utc` | A valid timestamp in the format described above. Impossible dates and timestamps without a `Z` suffix are rejected. |
 
 A row must have the same number of fields as the header.
 
@@ -108,8 +129,9 @@ node --test
 ```
 
 Fixtures and tests cover a correct BOM/CRLF export with Chinese punctuation,
-commas and quoted newlines, invalid numeric values, cross-subreddit mixing and
-malformed quoted CSV.
+commas and quoted newlines; the website's `created_at`/`comments`/`r/` format;
+invalid numeric values and timestamps; cross-subreddit mixing; and malformed
+quoted CSV.
 
 ## Limitations
 

@@ -46,6 +46,50 @@ test('passes a valid BOM/CRLF export with Chinese punctuation and quoted newline
   assert.match(result.stdout, /Result: PASS/);
 });
 
+test('passes the website format with comments, created_at and r/ prefixes', () => {
+  const result = run([
+    fixture('website-format.csv'),
+    '--subreddit',
+    'r/mossy_circuits,r/paper_tides,r/quiet_orbit',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  assert.match(
+    result.stdout,
+    /Expected subreddit scope: mossy_circuits, paper_tides, quiet_orbit/,
+  );
+  assert.match(result.stdout, /Header: OK/);
+  assert.match(result.stdout, /Rows: 4 total, 4 passed, 0 failed/);
+  assert.match(result.stdout, /Result: PASS/);
+});
+
+test('fails invalid website rows for scope, time and negative comments', () => {
+  const result = run([
+    fixture('website-invalid.csv'),
+    '--subreddit',
+    'mossy_circuits,paper_tides,quiet_orbit',
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /Rows: 6 total, 1 passed, 5 failed/);
+  assert.match(result.stdout, /line 3: subreddit "r\/news" is outside the expected scope/);
+  assert.match(
+    result.stdout,
+    /line 4: created_at "2026-02-30T09:30:00\.000Z" is not a valid ISO 8601 UTC timestamp/,
+  );
+  assert.match(
+    result.stdout,
+    /line 5: created_at "2026-08-21T11:00:00\.000" is not a valid ISO 8601 UTC timestamp/,
+  );
+  assert.match(
+    result.stdout,
+    /line 6: created_at "2026-08-30T22:15:00\+00:00" is not a valid ISO 8601 UTC timestamp/,
+  );
+  assert.match(result.stdout, /line 7: comments "-1" is not a non-negative integer/);
+  assert.match(result.stdout, /Result: INVALID/);
+});
+
 test('accepts repeatable and equals-form --subreddit options', () => {
   const result = run([
     fixture('valid-unicode.csv'),
@@ -85,9 +129,9 @@ test('fails rows mixed in from another subreddit', () => {
   ]);
 
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /Rows: 5 total, 3 passed, 2 failed/);
+  assert.match(result.stdout, /Rows: 6 total, 4 passed, 2 failed/);
   assert.match(result.stdout, /line 3: subreddit "news" is outside the expected scope/);
-  assert.match(result.stdout, /line 5: subreddit "r\/programming" is outside the expected scope/);
+  assert.match(result.stdout, /line 7: subreddit "r\/news" is outside the expected scope/);
   assert.match(result.stdout, /Result: INVALID/);
 });
 
@@ -135,5 +179,8 @@ test('prints usage for --help', () => {
   assert.equal(result.status, 0);
   assert.equal(result.stderr, '');
   assert.match(result.stdout, /Usage: node tools\/archive-csv-check\/index\.js/);
-  assert.match(result.stdout, /subreddit, title, score, upvote_ratio, num_comments, created_utc/);
+  assert.match(
+    result.stdout,
+    /subreddit, title, score, upvote_ratio, num_comments \(or comments\), created_utc \(or created_at\)/,
+  );
 });

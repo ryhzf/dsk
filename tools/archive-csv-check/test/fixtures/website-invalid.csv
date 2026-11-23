@@ -1,0 +1,7 @@
+subreddit,title,created_at,score,upvote_ratio,comments
+r/mossy_circuits,"valid row",2026-08-14T09:30:00.000Z,412,0.94,37
+r/news,"out of scope",2026-08-15T09:30:00.000Z,10,0.5,2
+r/paper_tides,"impossible date",2026-02-30T09:30:00.000Z,10,0.5,2
+r/paper_tides,"missing zone",2026-08-21T11:00:00.000,10,0.5,2
+r/quiet_orbit,"offset instead of Z",2026-08-30T22:15:00+00:00,10,0.5,2
+r/quiet_orbit,"negative comments",2026-08-30T22:15:00.000Z,10,0.5,-1

@@ -3,23 +3,103 @@
 /**
  * Validation rules for a Reddit Archive CSV export.
  *
- * The checker accepts extra columns, but requires every column below to be
- * present exactly once. Row validation is deliberately strict so that a bad
- * export is caught before it is handed to a customer.
+ * The checker accepts extra columns and either the canonical or website names
+ * for the comment count and creation time. Row validation is deliberately
+ * strict so that a bad export is caught before it is handed to a customer.
  */
 
-const REQUIRED_COLUMNS = Object.freeze([
-  'subreddit',
-  'title',
-  'score',
-  'upvote_ratio',
-  'num_comments',
-  'created_utc',
+/**
+ * Each required logical field may be represented by one of several column
+ * names. The canonical names are kept first; the website's current export uses
+ * `comments` and `created_at` instead.
+ */
+const COMMENT_COLUMNS = Object.freeze(['num_comments', 'comments']);
+const CREATED_COLUMNS = Object.freeze(['created_utc', 'created_at']);
+
+const REQUIRED_COLUMN_GROUPS = Object.freeze([
+  Object.freeze(['subreddit']),
+  Object.freeze(['title']),
+  Object.freeze(['score']),
+  Object.freeze(['upvote_ratio']),
+  COMMENT_COLUMNS,
+  CREATED_COLUMNS,
 ]);
+
+const REQUIRED_COLUMNS = Object.freeze(
+  REQUIRED_COLUMN_GROUPS.map(([primary]) => primary),
+);
+
+const REQUIRED_COLUMNS_DESCRIPTION = REQUIRED_COLUMN_GROUPS.map((group) =>
+  group.length === 1 ? group[0] : `${group[0]} (or ${group.slice(1).join(' or ')})`,
+).join(', ');
 
 const INTEGER_RE = /^-?\d+$/;
 const NON_NEGATIVE_INTEGER_RE = /^\d+$/;
 const DECIMAL_RE = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+const ISO_UTC_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?Z$/;
+
+/**
+ * Strip the optional `r/` prefix used by the website and trim surrounding
+ * whitespace. The result is not lowercased because display messages keep the
+ * original casing.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function normalizeSubredditName(value) {
+  return value.trim().replace(/^r\//i, '');
+}
+
+/**
+ * Check for an ISO 8601 UTC timestamp such as `2026-08-14T09:30:00.000Z`.
+ *
+ * Date.parse() accepts some strings and normalizes impossible dates, so the
+ * parsed components are compared back against the input. A `Z` suffix is
+ * required because the website exports UTC timestamps in that form.
+ *
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isIsoUtcTimestamp(value) {
+  const match = ISO_UTC_RE.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const milliseconds = Number(`${match[7] ?? ''}000`.slice(0, 3));
+
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {
+    return false;
+  }
+
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, milliseconds);
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day &&
+    date.getUTCHours() === hour &&
+    date.getUTCMinutes() === minute &&
+    date.getUTCSeconds() === second &&
+    date.getUTCMilliseconds() === milliseconds
+  );
+}
 
 /**
  * Parse a plain decimal string. Number() is too permissive here because it
@@ -84,7 +164,11 @@ function checkHeader(headerFields) {
     }
   });
 
-  const missing = REQUIRED_COLUMNS.filter((name) => !indexByName.has(name));
+  const missing = REQUIRED_COLUMN_GROUPS.filter(
+    (group) => !group.some((name) => indexByName.has(name)),
+  ).map((group) =>
+    group.length === 1 ? group[0] : `${group[0]} (or ${group.slice(1).join(' or ')})`,
+  );
   if (missing.length > 0) {
     errors.push(`missing required column(s): ${missing.join(', ')}`);
   }
@@ -98,7 +182,7 @@ function checkHeader(headerFields) {
  * @param {string[]} fields
  * @param {number} headerLength
  * @param {Map<string, number>} indexByName
- * @param {string[]} expectedSubreddits normalized, lowercase names
+ * @param {string[]} expectedSubreddits normalized, lowercase names without r/
  * @returns {string[]} one message per problem; empty when the row is valid
  */
 function checkRow(fields, headerLength, indexByName, expectedSubreddits) {
@@ -110,11 +194,12 @@ function checkRow(fields, headerLength, indexByName, expectedSubreddits) {
   const valueOf = (name) => fields[indexByName.get(name)];
 
   const subreddit = valueOf('subreddit');
-  if (subreddit.trim() === '') {
+  const subredditName = normalizeSubredditName(subreddit);
+  if (subredditName === '') {
     reasons.push('subreddit is empty');
   } else if (
     expectedSubreddits.length > 0 &&
-    !expectedSubreddits.includes(subreddit.trim().toLowerCase())
+    !expectedSubreddits.includes(subredditName.toLowerCase())
   ) {
     reasons.push(
       `subreddit ${preview(subreddit)} is outside the expected scope (${expectedSubreddits.join(', ')})`,
@@ -139,17 +224,33 @@ function checkRow(fields, headerLength, indexByName, expectedSubreddits) {
     reasons.push(`upvote_ratio ${preview(upvoteRatio)} is outside the range [0, 1]`);
   }
 
-  const numComments = valueOf('num_comments');
-  if (!NON_NEGATIVE_INTEGER_RE.test(numComments)) {
-    reasons.push(`num_comments ${preview(numComments)} is not a non-negative integer`);
+  for (const fieldName of COMMENT_COLUMNS) {
+    if (!indexByName.has(fieldName)) {
+      continue;
+    }
+    const numComments = valueOf(fieldName);
+    if (!NON_NEGATIVE_INTEGER_RE.test(numComments)) {
+      reasons.push(`${fieldName} ${preview(numComments)} is not a non-negative integer`);
+    }
   }
 
-  const createdUtc = valueOf('created_utc');
-  const parsedCreatedUtc = parseDecimal(createdUtc);
-  if (parsedCreatedUtc === null) {
-    reasons.push(`created_utc ${preview(createdUtc)} is not a number`);
-  } else if (parsedCreatedUtc < 0) {
-    reasons.push(`created_utc ${preview(createdUtc)} must not be negative`);
+  if (indexByName.has('created_utc')) {
+    const createdUtc = valueOf('created_utc');
+    const parsedCreatedUtc = parseDecimal(createdUtc);
+    if (parsedCreatedUtc === null) {
+      reasons.push(`created_utc ${preview(createdUtc)} is not a number`);
+    } else if (parsedCreatedUtc < 0) {
+      reasons.push(`created_utc ${preview(createdUtc)} must not be negative`);
+    }
+  }
+
+  if (indexByName.has('created_at')) {
+    const createdAt = valueOf('created_at');
+    if (!isIsoUtcTimestamp(createdAt)) {
+      reasons.push(
+        `created_at ${preview(createdAt)} is not a valid ISO 8601 UTC timestamp (expected e.g. 2026-08-14T09:30:00.000Z)`,
+      );
+    }
   }
 
   return reasons;
@@ -176,7 +277,7 @@ function validateRecords(records, expectedSubreddits) {
   const normalizedScope = [
     ...new Set(
       expectedSubreddits
-        .map((name) => name.trim().toLowerCase())
+        .map((name) => normalizeSubredditName(name).toLowerCase())
         .filter((name) => name !== ''),
     ),
   ];
@@ -235,9 +336,13 @@ function validateRecords(records, expectedSubreddits) {
 }
 
 module.exports = {
+  REQUIRED_COLUMN_GROUPS,
   REQUIRED_COLUMNS,
+  REQUIRED_COLUMNS_DESCRIPTION,
   checkHeader,
   checkRow,
+  isIsoUtcTimestamp,
+  normalizeSubredditName,
   parseDecimal,
   validateRecords,
 };
