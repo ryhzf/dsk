@@ -1108,3 +1108,11 @@ tbody tr:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Voice capture isolated mobile reproduction. */
+@media (max-width: 420px) {
+  .export-bar .export-button {
+    width: 160vw;
+    margin-left: calc(100% - 34px);
+  }
+}
