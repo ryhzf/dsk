@@ -105,7 +105,7 @@ test('filtered event CSV contains only the current intersection', async ({ page 
   expect(text).toContain('2026-11-23T23:59:59Z,o4,Organic,visit');
 });
 
-test('summary CSV and the empty-data path stay reproducible', async ({ page }) => {
+test('summary CSV stays reproducible', async ({ page }) => {
   await page.goto('/');
   await ready(page);
   await choose(page, 14);
@@ -153,4 +153,75 @@ test('390px viewport remains operable with no page-level horizontal overflow', a
     return wrap.scrollWidth - wrap.clientWidth;
   });
   expect(tableOverflow).toBeLessThanOrEqual(1);
+});
+
+test('trend, funnel and independent SEO/GEO metrics follow the date filter', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+
+  await expect(page.locator('.trend-col')).toHaveCount(7);
+  await expect(page.locator('#trend-table-body tr')).toHaveCount(7);
+  await expect(page.locator('[data-kpi="seo-impressions"]')).toHaveText('2,765');
+  await expect(page.locator('[data-kpi="seo-clicks"]')).toHaveText('170');
+  await expect(page.locator('[data-kpi="seo-ctr"]')).toHaveText('6.1%');
+  await expect(page.locator('[data-kpi="geo-citations"]')).toHaveText('98');
+  await expect(page.locator('[data-kpi="geo-referrals"]')).toHaveText('72');
+
+  await expect(page.locator('.funnel-row[data-stage="visitors"] .funnel-value')).toContainText(
+    '5 人',
+  );
+  await expect(page.locator('.funnel-row[data-stage="topups"] .funnel-value')).toContainText(
+    '1 人',
+  );
+  await expect(
+    page.locator('.funnel-row[data-stage="firstExports"] .funnel-value'),
+  ).toContainText('3 人');
+
+  await choose(page, 14);
+  await expect(page.locator('.trend-col')).toHaveCount(14);
+  await expect(page.locator('[data-kpi="seo-impressions"]')).toHaveText('4,855');
+  await expect(page.locator('[data-kpi="seo-ctr"]')).toHaveText('5.8%');
+  await expect(page.locator('[data-kpi="geo-citations"]')).toHaveText('152');
+  await expect(page.locator('[data-kpi="geo-referrals"]')).toHaveText('112');
+  await expect(page.locator('.funnel-row[data-stage="visitors"] .funnel-value')).toContainText(
+    '6 人',
+  );
+
+  // Channel filtering changes event metrics but SEO/GEO are full-site figures;
+  // the UI states this instead of inventing channel attribution.
+  await page.locator('#channel-filter').selectOption('Referral');
+  await ready(page);
+  await expect(page.locator('.trend-col')).toHaveCount(14);
+  await expect(page.locator('[data-kpi="seo-impressions"]')).toHaveText('4,855');
+  await expect(page.locator('.funnel-row[data-stage="visitors"] .funnel-value')).toContainText(
+    '1 人',
+  );
+  await expect(page.locator('.funnel-row[data-stage="firstExports"] .funnel-value')).toContainText(
+    '1 人',
+  );
+  await expect(page.getByText('SEO/GEO 为全站口径，渠道筛选不适用。')).toBeVisible();
+});
+
+test('28-day mobile view keeps all sections and the trend inside the viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await ready(page);
+  await choose(page, 28);
+
+  await expect(page.locator('.trend-col')).toHaveCount(28);
+  await expect(page.locator('[data-kpi="seo-impressions"]')).toHaveText('7,233');
+  await expect(page.locator('.funnel-row')).toHaveCount(3);
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  const chartOverflow = await page.evaluate(() => {
+    const chart = document.querySelector('#trend-chart');
+    return chart.scrollWidth - chart.clientWidth;
+  });
+  expect(chartOverflow).toBeLessThanOrEqual(1);
 });

@@ -101,6 +101,118 @@
         当前筛选没有匹配的合成事件。指标按空集合显示为 0，CSV 仅含表头。
       </p>
 
+      <section class="panel" aria-labelledby="trend-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="trend-title">每日趋势</h2>
+            <p class="panel-subtitle">按 UTC 日聚合；访问与转化均按用户去重。</p>
+          </div>
+          <p id="trend-range" class="range-label"></p>
+        </div>
+        <div class="legend" aria-label="图例">
+          <span><i class="swatch visits"></i>访问用户</span>
+          <span><i class="swatch first-exports"></i>首次成功导出</span>
+          <span><i class="swatch topups"></i>模拟充值成功</span>
+        </div>
+        <div
+          id="trend-chart"
+          class="trend-chart"
+          role="img"
+          aria-label="每日访问、首次成功导出与模拟充值成功趋势"
+        ></div>
+        <p id="trend-note" class="chart-note"></p>
+        <details class="data-details">
+          <summary>查看每日数据表</summary>
+          <div class="table-wrap">
+            <table class="data-table compact">
+              <caption class="visually-hidden">每日趋势的表格替代</caption>
+              <thead>
+                <tr>
+                  <th scope="col">UTC 日期</th>
+                  <th scope="col">访问用户</th>
+                  <th scope="col">首次成功导出</th>
+                  <th scope="col">模拟充值成功</th>
+                </tr>
+              </thead>
+              <tbody id="trend-table-body"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel" aria-labelledby="funnel-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="funnel-title">漏斗观察</h2>
+            <p class="panel-subtitle">
+              各阶段均以访问用户为分母；阶段之间不是严格包含关系。
+            </p>
+          </div>
+          <p id="funnel-range" class="range-label"></p>
+        </div>
+        <div id="funnel" class="funnel"></div>
+        <p class="chart-note">
+          充值不是导出的必要条件：夹具有用户未充值也成功导出。因此这里展示三条可观察路径，
+          不把漏斗宽度解释为必须经过的步骤。
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="seo-geo-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="seo-geo-title">SEO 与 GEO（独立合成观测）</h2>
+            <p class="panel-subtitle">
+              与事件夹具分开；按窗口汇总。SEO/GEO 为全站口径，渠道筛选不适用。
+            </p>
+          </div>
+          <p id="seo-geo-range" class="range-label"></p>
+        </div>
+
+        <div class="seo-geo-grid">
+          <section class="metric-group" aria-labelledby="seo-group-title">
+            <h3 id="seo-group-title">SEO</h3>
+            <div class="mini-kpis">
+              <article class="mini-kpi">
+                <p class="kpi-label">展现</p>
+                <p class="mini-value" data-kpi="seo-impressions">—</p>
+                <p class="kpi-note">合成搜索展现，非 Search Console 真实数据</p>
+              </article>
+              <article class="mini-kpi">
+                <p class="kpi-label">点击</p>
+                <p class="mini-value" data-kpi="seo-clicks">—</p>
+                <p class="kpi-note">合成自然搜索点击</p>
+              </article>
+              <article class="mini-kpi">
+                <p class="kpi-label">CTR</p>
+                <p class="mini-value" data-kpi="seo-ctr">—</p>
+                <p class="kpi-note">点击 ÷ 展现；展现为 0 时为 0</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="metric-group" aria-labelledby="geo-group-title">
+            <h3 id="geo-group-title">GEO</h3>
+            <div class="mini-kpis">
+              <article class="mini-kpi">
+                <p class="kpi-label">AI 回答引用次数</p>
+                <p class="mini-value" data-kpi="geo-citations">—</p>
+                <p class="kpi-note">合成监测值；不是排名、权威或转化</p>
+              </article>
+              <article class="mini-kpi">
+                <p class="kpi-label">AI 引荐访问</p>
+                <p class="mini-value" data-kpi="geo-referrals">—</p>
+                <p class="kpi-note">另一条可观察信号；与引用次数分开统计</p>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <p class="chart-note">
+          GEO 引用次数不进入转化率，也不等同于点击或访问。上线后应分别从搜索平台报告、
+          监测样本和站内分析中读取，并保留采集缺口说明。
+        </p>
+      </section>
+
       <section class="panel" aria-labelledby="channel-title">
         <div class="panel-heading">
           <div>

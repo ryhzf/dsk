@@ -9,6 +9,16 @@
 - Studio：现有帖子导出工作台，成功导出扣 3 积分，空结果和余额不足不扣；本 Demo 不修改 Studio
 - 渠道：只使用夹具里的 `Organic` / `Referral`，不做线上归因
 
+## 功能
+
+- 7 / 14 / 28 天窗口与渠道筛选，联动所有 KPI、趋势、漏斗、分渠道表和 SEO/GEO 卡片；
+- 四张核心 KPI：访问用户、首次成功导出用户、模拟充值成功用户、访问 → 首次导出转化率；
+- 每日趋势（按 UTC 日、按用户去重）与可展开的每日数据表；
+- 三阶段漏斗观察（明确标注阶段非严格嵌套）；
+- 独立合成 SEO/GEO 指标：展现、点击、CTR、AI 引用次数、AI 引荐访问；
+- 筛选后事件 CSV 与指标摘要 CSV，含表头、BOM、RFC 4180 转义；
+- 空集合显示 0，不产生 `NaN`；页面明确标注合成数据，390px 可操作。
+
 ## 本地启动
 
 ```bash
@@ -25,7 +35,7 @@ npm start
 cd demos/reddit-archive-growth
 npm test                 # Node 内置测试：指标、边界、去重、零分母、CSV
 npx playwright install chromium   # 首次运行浏览器测试时
-npm run test:e2e         # Chromium：筛选联动、CSV 下载、390px 可操作
+npm run test:e2e         # Chromium：筛选联动、趋势/漏斗/SEO、CSV 下载、390px
 npm run test:all
 ```
 

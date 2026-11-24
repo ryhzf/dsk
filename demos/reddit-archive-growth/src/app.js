@@ -2,9 +2,12 @@ import { FIXTURE_EVENTS, CUTOFF_MS } from './data.js';
 import {
   ALL_CHANNELS,
   buildChannelRows,
+  buildDailySeries,
+  buildFunnel,
   channelsIn,
   computeKpis,
   filterEvents,
+  seoGeoForWindow,
 } from './metrics.js';
 import { buildEventsCsv, buildSummaryCsv } from './csv.js';
 import { formatInteger, formatPercent, formatUtcRange } from './format.js';
@@ -28,6 +31,18 @@ const elements = {
   kpiFirstExport: document.querySelector('[data-kpi="first-export"]'),
   kpiTopup: document.querySelector('[data-kpi="topup"]'),
   kpiConversion: document.querySelector('[data-kpi="conversion"]'),
+  trendChart: document.querySelector('#trend-chart'),
+  trendTableBody: document.querySelector('#trend-table-body'),
+  trendRange: document.querySelector('#trend-range'),
+  trendNote: document.querySelector('#trend-note'),
+  funnel: document.querySelector('#funnel'),
+  funnelRange: document.querySelector('#funnel-range'),
+  seoGeoRange: document.querySelector('#seo-geo-range'),
+  seoImpressions: document.querySelector('[data-kpi="seo-impressions"]'),
+  seoClicks: document.querySelector('[data-kpi="seo-clicks"]'),
+  seoCtr: document.querySelector('[data-kpi="seo-ctr"]'),
+  geoCitations: document.querySelector('[data-kpi="geo-citations"]'),
+  geoReferrals: document.querySelector('[data-kpi="geo-referrals"]'),
 };
 
 function populateChannels() {
@@ -94,6 +109,112 @@ function renderTable(rows) {
   }
 }
 
+function renderTrend(kpis) {
+  const series = buildDailySeries(FIXTURE_EVENTS, currentFilter());
+  const maxVisits = Math.max(1, ...series.map((point) => point.visitors));
+  const totalVisits = series.reduce((sum, point) => sum + point.visitors, 0);
+  const chart = document.createElement('div');
+  chart.className = 'trend-plot';
+  chart.style.setProperty('--days', String(series.length));
+  chart.setAttribute('aria-hidden', 'true');
+
+  for (const point of series) {
+    const col = document.createElement('div');
+    col.className = 'trend-col';
+
+    const bars = document.createElement('div');
+    bars.className = 'trend-bars';
+    for (const [type, value] of [
+      ['visits', point.visitors],
+      ['first-exports', point.firstExports],
+      ['topups', point.topups],
+    ]) {
+      const bar = document.createElement('span');
+      bar.className = `bar ${type}`;
+      bar.style.height = `${(value / maxVisits) * 100}%`;
+      bar.title = `${point.date}：${type === 'visits' ? '访问' : type === 'first-exports' ? '首次导出' : '模拟充值'} ${value}`;
+      bars.append(bar);
+    }
+
+    const tick = document.createElement('span');
+    tick.className = 'trend-tick';
+    tick.textContent = series.length >= 28 ? point.date.slice(8) : point.date.slice(5);
+    tick.title = point.date;
+    col.append(bars, tick);
+    chart.append(col);
+  }
+
+  elements.trendChart.replaceChildren(chart);
+  elements.trendChart.setAttribute(
+    'aria-label',
+    `${series.length} 天每日趋势：按日去重访问合计 ${totalVisits} 人次，首次成功导出合计 ${kpis.firstExportUsers} 人，模拟充值成功合计 ${kpis.topupUsers} 人`,
+  );
+  elements.trendNote.textContent =
+    `柱高按每日最高访问 ${maxVisits} 人缩放；访问按日去重，同一用户多日访问会在日合计中重复。`;
+  elements.trendRange.textContent = `${formatUtcRange(kpis.windowStartMs, kpis.windowEndMs)}（左闭右开）`;
+
+  elements.trendTableBody.replaceChildren();
+  for (const point of series) {
+    const tr = document.createElement('tr');
+    tr.append(
+      cell('UTC 日期', point.date),
+      cell('访问用户', formatInteger(point.visitors)),
+      cell('首次成功导出', formatInteger(point.firstExports)),
+      cell('模拟充值成功', formatInteger(point.topups)),
+    );
+    elements.trendTableBody.append(tr);
+  }
+}
+
+function renderFunnel(kpis) {
+  const stages = buildFunnel(FIXTURE_EVENTS, currentFilter());
+  elements.funnel.replaceChildren();
+
+  for (const stage of stages) {
+    const row = document.createElement('div');
+    row.className = 'funnel-row';
+    row.dataset.stage = stage.key;
+
+    const label = document.createElement('div');
+    label.className = 'funnel-label';
+    label.textContent = stage.label;
+    const hint = document.createElement('span');
+    hint.textContent = stage.base ? '分母' : '相对访客';
+    label.append(hint);
+
+    const track = document.createElement('div');
+    track.className = 'funnel-track';
+    const fill = document.createElement('span');
+    fill.className = 'funnel-fill';
+    fill.style.width = `${stage.shareOfVisitors * 100}%`;
+    track.append(fill);
+
+    const value = document.createElement('div');
+    value.className = 'funnel-value';
+    value.textContent = `${formatInteger(stage.value)} 人`;
+    const share = document.createElement('small');
+    share.textContent = `${formatPercent(stage.shareOfVisitors)} / 访客`;
+    value.append(share);
+
+    row.append(label, track, value);
+    elements.funnel.append(row);
+  }
+
+  elements.funnelRange.textContent =
+    `${formatUtcRange(kpis.windowStartMs, kpis.windowEndMs)}（左闭右开）`;
+}
+
+function renderSeoGeo(kpis) {
+  const metrics = seoGeoForWindow(state.days, kpis.cutoffMs);
+  elements.seoImpressions.textContent = formatInteger(metrics.impressions);
+  elements.seoClicks.textContent = formatInteger(metrics.clicks);
+  elements.seoCtr.textContent = formatPercent(metrics.ctr);
+  elements.geoCitations.textContent = formatInteger(metrics.citations);
+  elements.geoReferrals.textContent = formatInteger(metrics.referralVisits);
+  elements.seoGeoRange.textContent =
+    `${formatUtcRange(metrics.windowStartMs, metrics.windowEndMs)}（左闭右开）`;
+}
+
 function render() {
   const kpis = computeKpis(FIXTURE_EVENTS, currentFilter());
   const range = formatUtcRange(kpis.windowStartMs, kpis.windowEndMs);
@@ -115,6 +236,9 @@ function render() {
       channel: row.total ? 'Total' : row.channel,
     })),
   );
+  renderTrend(kpis);
+  renderFunnel(kpis);
+  renderSeoGeo(kpis);
 
   document.body.dataset.ready = 'true';
   document.body.dataset.days = String(state.days);
