@@ -254,13 +254,22 @@ test.describe('390px mobile viewport', () => {
   }) => {
     await page.goto('/');
 
+    // Use the layout viewport (clientWidth): with an oversized child,
+    // window.innerWidth can expand to the content width and hide the overflow.
     const initialMetrics = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
-      innerWidth: window.innerWidth,
+      clientWidth: document.documentElement.clientWidth,
     }));
-    expect(initialMetrics.scrollWidth).toBeLessThanOrEqual(initialMetrics.innerWidth);
-    expect(initialMetrics.bodyWidth).toBeLessThanOrEqual(initialMetrics.innerWidth);
+    expect(initialMetrics.clientWidth).toBe(390);
+    expect(initialMetrics.scrollWidth).toBeLessThanOrEqual(initialMetrics.clientWidth);
+    expect(initialMetrics.bodyWidth).toBeLessThanOrEqual(initialMetrics.clientWidth);
+
+    const exportButtonBox = await page.locator(EXPORT_BUTTON).boundingBox();
+    expect(exportButtonBox.x).toBeGreaterThanOrEqual(0);
+    expect(exportButtonBox.x + exportButtonBox.width).toBeLessThanOrEqual(
+      initialMetrics.clientWidth,
+    );
 
     const walletBox = await page.locator('.wallet').boundingBox();
     const catalogBox = await page.locator('.catalog').boundingBox();
@@ -282,9 +291,9 @@ test.describe('390px mobile viewport', () => {
     await expect(page.locator(ROW).first()).toBeVisible();
     const afterMetrics = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
-      innerWidth: window.innerWidth,
+      clientWidth: document.documentElement.clientWidth,
     }));
-    expect(afterMetrics.scrollWidth).toBeLessThanOrEqual(afterMetrics.innerWidth);
+    expect(afterMetrics.scrollWidth).toBeLessThanOrEqual(afterMetrics.clientWidth);
   });
 });
 
