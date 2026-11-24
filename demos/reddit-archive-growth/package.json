@@ -1,0 +1,16 @@
+{
+  "name": "voice-capture-growth-console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only synthetic Voice capture · Growth Console demo.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/unit/metrics.test.js tests/unit/csv.test.js tests/unit/series-funnel-seo.test.js",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
+  }
+}
