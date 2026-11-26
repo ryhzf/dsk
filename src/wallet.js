@@ -20,7 +20,7 @@ function defaultCreateId() {
 function emptyState() {
   return {
     version: WALLET_VERSION,
-    balance: 1,
+    balance: 0,
     transactions: [],
     processedRequests: [],
   };
