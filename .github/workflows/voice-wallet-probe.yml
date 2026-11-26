@@ -1,0 +1,14 @@
+name: Voice capture wallet probe
+on:
+  push:
+    branches: [voice-capture/ci-wallet-probe]
+permissions:
+  contents: read
+jobs:
+  wallet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: node --test tests/unit/wallet.test.js
