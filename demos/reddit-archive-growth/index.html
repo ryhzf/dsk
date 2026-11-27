@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Voice capture · Growth Console：固定合成事件、固定截止时点的增长验收看板。"
+    />
+    <title>Voice capture · Growth Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <div>
+          <p class="eyebrow">Voice capture · Growth Console</p>
+          <h1>增长验收看板</h1>
+          <p class="lede">固定合成事件、固定截止时点、可复算的筛选与下载。</p>
+        </div>
+        <p class="synthetic-badge" role="note">
+          <span aria-hidden="true">●</span>
+          合成数据 · 非真实业务
+        </p>
+      </div>
+    </header>
+
+    <main id="main" class="wrap">
+      <section class="notice" aria-labelledby="notice-title">
+        <h2 id="notice-title">验收边界</h2>
+        <p>
+          验收截止固定为 <strong>2026-11-24 00:00:00 UTC</strong>；窗口为左闭右开
+          <code>[截止 − N 天, 截止)</code>。页面所有事件均为合成夹具，不读取真实
+          Reddit 数据、真实积分或生产埋点。
+        </p>
+        <p>
+          Studio 是现有帖子导出工作台：<strong>成功导出扣 3 积分</strong>，空结果和余额不足不扣。
+          本页只统计 <code>export_success</code> 事件，不修改 Studio。
+        </p>
+      </section>
+
+      <section class="controls" aria-label="筛选与下载">
+        <div class="control-group">
+          <span class="control-label" id="window-label">时间窗口</span>
+          <div class="segmented" role="group" aria-labelledby="window-label">
+            <button type="button" data-days="7" aria-pressed="true">7 天</button>
+            <button type="button" data-days="14" aria-pressed="false">14 天</button>
+            <button type="button" data-days="28" aria-pressed="false">28 天</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="channel-filter">渠道</label>
+          <select id="channel-filter" name="channel">
+            <option value="all">全部渠道</option>
+          </select>
+        </div>
+
+        <div class="control-actions">
+          <button type="button" id="download-events" class="primary">
+            下载筛选事件 CSV
+          </button>
+          <button type="button" id="download-summary" class="secondary">
+            下载指标摘要 CSV
+          </button>
+        </div>
+      </section>
+
+      <p id="filter-status" class="filter-status" role="status" aria-live="polite"></p>
+      <p id="download-status" class="download-status" role="status" aria-live="polite"></p>
+
+      <section class="kpis" aria-label="核心指标">
+        <article class="kpi" data-kpi-card="visitors">
+          <p class="kpi-label">访问用户</p>
+          <p class="kpi-value" data-kpi="visitors">—</p>
+          <p class="kpi-note">筛选交集内 visit 按用户去重</p>
+        </article>
+
+        <article class="kpi" data-kpi-card="first-export">
+          <p class="kpi-label">首次成功导出用户</p>
+          <p class="kpi-value" data-kpi="first-export">—</p>
+          <p class="kpi-note">全夹具每用户最早 <code>export_success</code>，且落在交集</p>
+        </article>
+
+        <article class="kpi" data-kpi-card="topup">
+          <p class="kpi-label">模拟充值成功用户</p>
+          <p class="kpi-value" data-kpi="topup">—</p>
+          <p class="kpi-note">交集内 t 按用户去重，且属于访客集合</p>
+        </article>
+
+        <article class="kpi accent" data-kpi-card="conversion">
+          <p class="kpi-label">访问 → 首次导出转化率</p>
+          <p class="kpi-value" data-kpi="conversion">—</p>
+          <p class="kpi-note">首次成功导出用户 ÷ 访客；空集合为 0</p>
+        </article>
+      </section>
+
+      <p id="empty-state" class="empty-state" hidden>
+        当前筛选没有匹配的合成事件。指标按空集合显示为 0，CSV 仅含表头。
+      </p>
+
+      <section class="panel" aria-labelledby="trend-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="trend-title">每日趋势</h2>
+            <p class="panel-subtitle">按 UTC 日聚合；访问与转化均按用户去重。</p>
+          </div>
+          <p id="trend-range" class="range-label"></p>
+        </div>
+        <div class="legend" aria-label="图例">
+          <span><i class="swatch visits"></i>访问用户</span>
+          <span><i class="swatch first-exports"></i>首次成功导出</span>
+          <span><i class="swatch topups"></i>模拟充值成功</span>
+        </div>
+        <div
+          id="trend-chart"
+          class="trend-chart"
+          role="img"
+          aria-label="每日访问、首次成功导出与模拟充值成功趋势"
+        ></div>
+        <p id="trend-note" class="chart-note"></p>
+        <details class="data-details">
+          <summary>查看每日数据表</summary>
+          <div class="table-wrap">
+            <table class="data-table compact">
+              <caption class="visually-hidden">每日趋势的表格替代</caption>
+              <thead>
+                <tr>
+                  <th scope="col">UTC 日期</th>
+                  <th scope="col">访问用户</th>
+                  <th scope="col">首次成功导出</th>
+                  <th scope="col">模拟充值成功</th>
+                </tr>
+              </thead>
+              <tbody id="trend-table-body"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel" aria-labelledby="funnel-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="funnel-title">漏斗观察</h2>
+            <p class="panel-subtitle">
+              各阶段均以访问用户为分母；阶段之间不是严格包含关系。
+            </p>
+          </div>
+          <p id="funnel-range" class="range-label"></p>
+        </div>
+        <div id="funnel" class="funnel"></div>
+        <p class="chart-note">
+          充值不是导出的必要条件：夹具有用户未充值也成功导出。因此这里展示三条可观察路径，
+          不把漏斗宽度解释为必须经过的步骤。
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="seo-geo-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="seo-geo-title">SEO 与 GEO（独立合成观测）</h2>
+            <p class="panel-subtitle">
+              与事件夹具分开；按窗口汇总。SEO/GEO 为全站口径，渠道筛选不适用。
+            </p>
+          </div>
+          <p id="seo-geo-range" class="range-label"></p>
+        </div>
+
+        <div class="seo-geo-grid">
+          <section class="metric-group" aria-labelledby="seo-group-title">
+            <h3 id="seo-group-title">SEO</h3>
+            <div class="mini-kpis">
+              <article class="mini-kpi">
+                <p class="kpi-label">展现</p>
+                <p class="mini-value" data-kpi="seo-impressions">—</p>
+                <p class="kpi-note">合成搜索展现，非 Search Console 真实数据</p>
+              </article>
+              <article class="mini-kpi">
+                <p class="kpi-label">点击</p>
+                <p class="mini-value" data-kpi="seo-clicks">—</p>
+                <p class="kpi-note">合成自然搜索点击</p>
+              </article>
+              <article class="mini-kpi">
+                <p class="kpi-label">CTR</p>
+                <p class="mini-value" data-kpi="seo-ctr">—</p>
+                <p class="kpi-note">点击 ÷ 展现；展现为 0 时为 0</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="metric-group" aria-labelledby="geo-group-title">
+            <h3 id="geo-group-title">GEO</h3>
+            <div class="mini-kpis">
+              <article class="mini-kpi">
+                <p class="kpi-label">AI 回答引用次数</p>
+                <p class="mini-value" data-kpi="geo-citations">—</p>
+                <p class="kpi-note">合成监测值；不是排名、权威或转化</p>
+              </article>
+              <article class="mini-kpi">
+                <p class="kpi-label">AI 引荐访问</p>
+                <p class="mini-value" data-kpi="geo-referrals">—</p>
+                <p class="kpi-note">另一条可观察信号；与引用次数分开统计</p>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <p class="chart-note">
+          GEO 引用次数不进入转化率，也不等同于点击或访问。上线后应分别从搜索平台报告、
+          监测样本和站内分析中读取，并保留采集缺口说明。
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="channel-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="channel-title">分渠道</h2>
+            <p class="panel-subtitle">渠道沿用夹具原值，不自行推断线上归因。</p>
+          </div>
+          <p id="range-label" class="range-label"></p>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <caption class="visually-hidden">
+              当前筛选下的分渠道访问、首次成功导出、模拟充值成功与转化率
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">渠道</th>
+                <th scope="col">访问用户</th>
+                <th scope="col">首次成功导出</th>
+                <th scope="col">模拟充值成功</th>
+                <th scope="col">转化率</th>
+              </tr>
+            </thead>
+            <tbody id="channel-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel method" aria-labelledby="method-title">
+        <h2 id="method-title">指标口径</h2>
+        <ul class="method-list">
+          <li><strong>访客：</strong>筛选交集内的 <code>visit</code>，按 <code>user</code> 去重。</li>
+          <li>
+            <strong>首次成功导出：</strong>从整个夹具找出每个用户最早的
+            <code>export_success</code>；只计落在同一日期/渠道交集、且属于访客集合的用户。
+            同一用户之后的导出不重复计数。
+          </li>
+          <li>
+            <strong>模拟充值成功：</strong>交集内的 <code>simulated_topup_success</code>，按用户去重，
+            且用户必须是同一交集的访客。
+          </li>
+          <li><strong>转化率：</strong>首次成功导出用户 ÷ 访客；访客为 0 时按 0 处理。</li>
+          <li><strong>渠道：</strong>只用夹具中的 <code>Organic</code> / <code>Referral</code>，不做线上归因。</li>
+          <li>
+            <strong>Studio：</strong>成功导出扣 3 积分；空结果、余额不足不扣。Growth Console
+            不修改 Studio 的代码、价格或积分逻辑。
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <p>
+          数据源：<code>src/data.js</code> 的 15 条固定合成事件。验收截止：
+          <code>2026-11-24T00:00:00Z</code>。本页为本地 Demo，不接支付、真实 Reddit
+          数据、生产埋点或部署。
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
