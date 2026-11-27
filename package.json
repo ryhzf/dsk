@@ -1,0 +1,16 @@
+{
+  "name": "reddit-archive-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A local-only Reddit archive self-service demo with a credit wallet and CSV export.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/unit/wallet.test.js tests/unit/catalog.test.js tests/unit/csv.test.js tests/unit/export.test.js tests/unit/filter-store.test.js",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
+  }
+}
