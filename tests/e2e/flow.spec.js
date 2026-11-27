@@ -246,6 +246,59 @@ test('empty results and insufficient balance never charge; repeated exports dedu
   ).toEqual([7, 4, 1]);
 });
 
+test('community and date filters survive refresh, clear persistently, and keep the 3-credit export', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await confirmTopUp(page, 10);
+
+  await page.locator('#search').fill('quiet_orbit');
+  await fillDate(page, '#from-date', '2026-09-01');
+  await fillDate(page, '#to-date', '2026-10-31');
+  await page.locator('#sort').selectOption('score-desc');
+
+  await expect(page.locator(ROW)).toHaveCount(2);
+  await expect(page.locator('#match-count')).toHaveText('2');
+
+  await page.reload();
+
+  await expect(page.locator('#search')).toHaveValue('quiet_orbit');
+  await expect(page.locator('#from-date')).toHaveValue('2026-09-01');
+  await expect(page.locator('#to-date')).toHaveValue('2026-10-31');
+  await expect(page.locator('#sort')).toHaveValue('score-desc');
+  await expect(page.locator(ROW)).toHaveCount(2);
+  await expect(
+    page.locator('#subreddit-chips [data-subreddit="quiet_orbit"]'),
+  ).toHaveAttribute('aria-pressed', 'true');
+
+  // The restored selection still exports the same rows and costs 3 credits.
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator(EXPORT_BUTTON).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^reddit-archive-\d{8}-\d{6}\.csv$/);
+  const csv = await readDownload(download);
+  expect(csv).toContain('r/quiet_orbit');
+  expect(csv).not.toContain('r/mossy_circuits');
+  expect(csv.replace(/^\uFEFF/, '').trimEnd().split('\r\n')).toHaveLength(3);
+  await expect(page.locator(EXPORT_STATUS)).toContainText('已下载 2 行');
+  await expect(page.locator(BALANCE)).toHaveText('7');
+  await expect(page.locator('#export-balance')).toHaveText('7');
+  expect((await storedWallet(page)).balance).toBe(7);
+
+  // Cleared filters are persisted too, so refreshing stays empty.
+  await page.locator('#clear-filters').click();
+  await expect(page.locator(ROW)).toHaveCount(15);
+  await page.reload();
+
+  await expect(page.locator('#search')).toHaveValue('');
+  await expect(page.locator('#from-date')).toHaveValue('');
+  await expect(page.locator('#to-date')).toHaveValue('');
+  await expect(page.locator('#sort')).toHaveValue('newest');
+  await expect(page.locator(ROW)).toHaveCount(15);
+  await expect(page.locator(BALANCE)).toHaveText('7');
+  await expect(page.locator('#transaction-list .transaction')).toHaveCount(2);
+});
+
 test.describe('390px mobile viewport', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
