@@ -185,17 +185,52 @@ test('filtering changes the visible rows, and export downloads exactly those row
   await expect(page.locator('#transaction-list .transaction')).toHaveCount(2);
 });
 
-test('empty results and insufficient balance never charge; repeated exports deduct 3 exactly', async ({
+test('the selected community and date range survive a refresh, including a cleared selection', async ({
   page,
 }) => {
   await page.goto('/');
 
-  // No credits: export is refused without a transaction.
+  await page.locator('#search').fill('paper');
+  await fillDate(page, '#from-date', '2026-09-01');
+  await fillDate(page, '#to-date', '2026-10-31');
+
+  await expect(page.locator(ROW)).toHaveCount(3);
+  await expect(page.locator('#match-count')).toHaveText('3');
+  const paperChip = page.locator('.chip[data-subreddit="paper_tides"]');
+  await expect(paperChip).toHaveAttribute('aria-pressed', 'true');
+
+  await page.reload();
+  await expect(page.locator('#search')).toHaveValue('paper');
+  await expect(page.locator('#from-date')).toHaveValue('2026-09-01');
+  await expect(page.locator('#to-date')).toHaveValue('2026-10-31');
+  await expect(page.locator(ROW)).toHaveCount(3);
+  await expect(page.locator('#match-count')).toHaveText('3');
+  await expect(paperChip).toHaveAttribute('aria-pressed', 'true');
+
+  // Clearing filters is also persisted, so a refresh shows the full archive.
+  await page.locator('#clear-filters').click();
+  await expect(page.locator(ROW)).toHaveCount(15);
+  await page.reload();
+  await expect(page.locator('#search')).toHaveValue('');
+  await expect(page.locator('#from-date')).toHaveValue('');
+  await expect(page.locator('#to-date')).toHaveValue('');
+  await expect(page.locator(ROW)).toHaveCount(15);
+});
+
+test('empty results and insufficient balance never charge; repeated exports deduct 3 exactly', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const downloads = [];
+  page.on('download', (download) => downloads.push(download));
+
+  // No credits: export is refused without a transaction or a download.
   await page.locator(EXPORT_BUTTON).click();
   await expect(page.locator(EXPORT_STATUS)).toContainText('余额不足');
   await expect(page.locator(EXPORT_STATUS)).toContainText('当前余额 0 积分');
   await expect(page.locator(BALANCE)).toHaveText('0');
-  expect((await storedWallet(page))).toBeNull();
+  expect(await storedWallet(page)).toBeNull();
+  expect(downloads).toHaveLength(0);
 
   // Empty result: no download, no charge.
   await page.locator('#search').fill('no-such-subreddit');
@@ -205,13 +240,15 @@ test('empty results and insufficient balance never charge; repeated exports dedu
   await page.locator(EXPORT_BUTTON).click();
   await expect(page.locator(EXPORT_STATUS)).toContainText('没有可导出的匹配行');
   await expect(page.locator(BALANCE)).toHaveText('0');
+  expect(downloads).toHaveLength(0);
 
-  // Fund the wallet, then repeat the empty export: still no charge.
+  // Fund the wallet, then repeat the empty export: still no charge or file.
   await confirmTopUp(page, 10);
   await page.locator(EXPORT_BUTTON).click();
   await expect(page.locator(EXPORT_STATUS)).toContainText('没有可导出的匹配行');
   await expect(page.locator(BALANCE)).toHaveText('10');
   await expect(page.locator('#transaction-list .transaction')).toHaveCount(1);
+  expect(downloads).toHaveLength(0);
 
   // Clear to all 15 rows and export three times: 10 -> 7 -> 4 -> 1.
   await page.locator('#clear-filters').click();
@@ -225,14 +262,16 @@ test('empty results and insufficient balance never charge; repeated exports dedu
     await downloadPromise;
     await expect(page.locator(BALANCE)).toHaveText(expectedBalance);
   }
+  expect(downloads).toHaveLength(3);
 
-  // At 1 credit the fourth export is refused and nothing changes.
+  // At 1 credit the fourth export is refused and nothing is downloaded.
   await expect(button).toBeEnabled();
   await page.locator(EXPORT_BUTTON).click();
   await expect(page.locator(EXPORT_STATUS)).toContainText('余额不足');
   await expect(page.locator(EXPORT_STATUS)).toContainText('当前余额 1 积分');
   await expect(page.locator(BALANCE)).toHaveText('1');
   await expect(page.locator('#transaction-list .transaction')).toHaveCount(4);
+  expect(downloads).toHaveLength(3);
 
   const stored = await storedWallet(page);
   expect(stored.balance).toBe(1);

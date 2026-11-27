@@ -10,6 +10,7 @@ import {
 import { createWallet, EXPORT_PRICE } from './wallet.js';
 import { createBrowserStorage } from './storage.js';
 import { exportSelection } from './export.js';
+import { loadSavedFilters, saveFilters } from './filter-store.js';
 import {
   formatRatio,
   formatScore,
@@ -253,6 +254,7 @@ function render() {
 
 function applyFilterChange() {
   syncFiltersFromControls();
+  saveFilters(storage, filters);
   renderCatalog();
   renderChips();
   clearStatus(elements.exportStatus);
@@ -264,10 +266,29 @@ function resetFilters() {
   elements.toDate.value = '';
   elements.sort.value = DEFAULT_FILTERS.sort;
   filters = { ...DEFAULT_FILTERS };
+  saveFilters(storage, filters);
   renderCatalog();
   renderChips();
   clearStatus(elements.exportStatus);
   elements.search.focus();
+}
+
+/**
+ * Restore only the persisted community search and date range. Sort order
+ * remains a per-page preference, matching the Studio acceptance criteria.
+ */
+function restoreSavedFilters() {
+  const saved = loadSavedFilters(storage);
+  filters = {
+    ...DEFAULT_FILTERS,
+    query: saved.query,
+    from: saved.from,
+    to: saved.to,
+  };
+  elements.search.value = saved.query;
+  elements.fromDate.value = saved.from;
+  elements.toDate.value = saved.to;
+  elements.sort.value = DEFAULT_FILTERS.sort;
 }
 
 for (const button of elements.topupButtons) {
@@ -406,6 +427,5 @@ elements.sort.replaceChildren(
   }),
 );
 
-syncFiltersFromControls();
-elements.sort.value = filters.sort;
+restoreSavedFilters();
 render();
