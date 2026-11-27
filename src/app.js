@@ -9,6 +9,7 @@ import {
 } from './catalog.js';
 import { createWallet, EXPORT_PRICE } from './wallet.js';
 import { createBrowserStorage } from './storage.js';
+import { readFilters, writeFilters } from './filters.js';
 import { exportSelection } from './export.js';
 import {
   formatRatio,
@@ -18,6 +19,7 @@ import {
 
 const { storage, persistent } = createBrowserStorage();
 const wallet = createWallet({ storage });
+const savedFilters = readFilters(storage);
 
 const elements = {
   balanceValue: document.querySelector('#balance-value'),
@@ -48,7 +50,7 @@ const elements = {
   emptyClear: document.querySelector('#empty-clear'),
 };
 
-let filters = { ...DEFAULT_FILTERS };
+let filters = { ...savedFilters };
 let pendingTopUpAmount = null;
 let exportLocked = false;
 
@@ -253,6 +255,7 @@ function render() {
 
 function applyFilterChange() {
   syncFiltersFromControls();
+  writeFilters(storage, filters);
   renderCatalog();
   renderChips();
   clearStatus(elements.exportStatus);
@@ -264,6 +267,7 @@ function resetFilters() {
   elements.toDate.value = '';
   elements.sort.value = DEFAULT_FILTERS.sort;
   filters = { ...DEFAULT_FILTERS };
+  writeFilters(storage, filters);
   renderCatalog();
   renderChips();
   clearStatus(elements.exportStatus);
@@ -406,6 +410,12 @@ elements.sort.replaceChildren(
   }),
 );
 
-syncFiltersFromControls();
+// Restore the last saved selection before the first render. Clearing the
+// filters writes the empty defaults back, so a refresh after clearing stays
+// empty instead of reviving an older selection.
+elements.search.value = filters.query;
+elements.fromDate.value = filters.from;
+elements.toDate.value = filters.to;
 elements.sort.value = filters.sort;
+syncFiltersFromControls();
 render();
