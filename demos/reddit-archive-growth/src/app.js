@@ -265,7 +265,7 @@ function downloadCsv(text, name) {
 function downloadEvents() {
   const filter = currentFilter();
   const count = filterEvents(FIXTURE_EVENTS, filter).length;
-  downloadCsv(buildEventsCsv(FIXTURE_EVENTS, { days: filter.days }), filename('events'));
+  downloadCsv(buildEventsCsv(FIXTURE_EVENTS, filter), filename('events'));
   elements.downloadStatus.textContent = `已生成 ${filename('events')}，共 ${count} 条筛选事件。`;
 }
 
