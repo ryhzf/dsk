@@ -9,6 +9,7 @@ import {
 } from './catalog.js';
 import { createWallet, EXPORT_PRICE } from './wallet.js';
 import { createBrowserStorage } from './storage.js';
+import { createFilterStore } from './filters.js';
 import { exportSelection } from './export.js';
 import {
   formatRatio,
@@ -18,6 +19,7 @@ import {
 
 const { storage, persistent } = createBrowserStorage();
 const wallet = createWallet({ storage });
+const filterStore = createFilterStore({ storage });
 
 const elements = {
   balanceValue: document.querySelector('#balance-value'),
@@ -48,7 +50,7 @@ const elements = {
   emptyClear: document.querySelector('#empty-clear'),
 };
 
-let filters = { ...DEFAULT_FILTERS };
+let filters = filterStore.load();
 let pendingTopUpAmount = null;
 let exportLocked = false;
 
@@ -137,7 +139,8 @@ function renderWallet() {
     elements.storageBadge.title = '无法写入 localStorage，刷新后可能不会保留。';
   } else {
     elements.storageBadge.textContent = '本地保存';
-    elements.storageBadge.title = '余额与交易记录保存在此浏览器的 localStorage 中。';
+    elements.storageBadge.title =
+      '余额、交易记录与筛选保存在此浏览器的 localStorage 中。';
   }
 
   elements.transactionCount.textContent = `${transactions.length} 笔`;
@@ -253,6 +256,7 @@ function render() {
 
 function applyFilterChange() {
   syncFiltersFromControls();
+  filterStore.save(filters);
   renderCatalog();
   renderChips();
   clearStatus(elements.exportStatus);
@@ -264,6 +268,7 @@ function resetFilters() {
   elements.toDate.value = '';
   elements.sort.value = DEFAULT_FILTERS.sort;
   filters = { ...DEFAULT_FILTERS };
+  filterStore.save(filters);
   renderCatalog();
   renderChips();
   clearStatus(elements.exportStatus);
@@ -406,6 +411,11 @@ elements.sort.replaceChildren(
   }),
 );
 
-syncFiltersFromControls();
+// Restore the last filters the person used before this visit (the same
+// controls the filters form would have produced), then render.
+elements.search.value = filters.query;
+elements.fromDate.value = filters.from;
+elements.toDate.value = filters.to;
 elements.sort.value = filters.sort;
+syncFiltersFromControls();
 render();

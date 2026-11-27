@@ -8,6 +8,7 @@ const EXPORT_BUTTON = '#export-button';
 const EXPORT_STATUS = '#export-status';
 const WALLET_STATUS = '#wallet-status';
 const STORAGE_KEY = 'reddit-archive-demo.wallet.v1';
+const FILTERS_KEY = 'reddit-archive-demo.filters.v1';
 
 function topUpButton(page, amount) {
   return page
@@ -183,6 +184,55 @@ test('filtering changes the visible rows, and export downloads exactly those row
   await page.reload();
   await expect(page.locator(BALANCE)).toHaveText('7');
   await expect(page.locator('#transaction-list .transaction')).toHaveCount(2);
+});
+
+test('chosen community, dates, and sort survive a refresh; clearing them persists too', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.locator('#subreddit-chips [data-subreddit="mossy_circuits"]').click();
+  await fillDate(page, '#from-date', '2026-09-01');
+  await fillDate(page, '#to-date', '2026-10-31');
+  await page.locator('#sort').selectOption('score-desc');
+  await expect(page.locator(ROW)).toHaveCount(3);
+
+  const storedFilters = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)),
+    FILTERS_KEY,
+  );
+  expect(storedFilters).toMatchObject({
+    query: 'mossy_circuits',
+    from: '2026-09-01',
+    to: '2026-10-31',
+    sort: 'score-desc',
+  });
+
+  await page.reload();
+  await expect(page.locator('#search')).toHaveValue('mossy_circuits');
+  await expect(page.locator('#from-date')).toHaveValue('2026-09-01');
+  await expect(page.locator('#to-date')).toHaveValue('2026-10-31');
+  await expect(page.locator('#sort')).toHaveValue('score-desc');
+  await expect(
+    page.locator('#subreddit-chips [data-subreddit="mossy_circuits"]'),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator(ROW)).toHaveCount(3);
+  await expect(page.locator('#match-count')).toHaveText('3');
+  await expect(page.locator('.post-title')).toHaveText([
+    '教程：把旧路由器改成温湿度记录仪（含逗号与引号测试："A/B, C"）',
+    '"低功耗"电台，真的能撑过一周吗？',
+    'Field notes: moss, copper, and a rainy weekend',
+  ]);
+
+  // Clearing filters must not come back after another refresh.
+  await page.locator('#clear-filters').click();
+  await expect(page.locator('#search')).toHaveValue('');
+  await page.reload();
+  await expect(page.locator('#search')).toHaveValue('');
+  await expect(page.locator('#from-date')).toHaveValue('');
+  await expect(page.locator('#to-date')).toHaveValue('');
+  await expect(page.locator('#sort')).toHaveValue('newest');
+  await expect(page.locator(ROW)).toHaveCount(15);
 });
 
 test('empty results and insufficient balance never charge; repeated exports deduct 3 exactly', async ({

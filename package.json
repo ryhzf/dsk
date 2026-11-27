@@ -6,7 +6,7 @@
   "description": "A local-only Reddit archive self-service demo with a credit wallet and CSV export.",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test tests/unit/wallet.test.js tests/unit/catalog.test.js tests/unit/csv.test.js tests/unit/export.test.js",
+    "test": "node --test tests/unit/wallet.test.js tests/unit/catalog.test.js tests/unit/csv.test.js tests/unit/export.test.js tests/unit/filters.test.js",
     "test:e2e": "playwright test",
     "test:all": "npm test && npm run test:e2e"
   },
