@@ -185,6 +185,63 @@ test('filtering changes the visible rows, and export downloads exactly those row
   await expect(page.locator('#transaction-list .transaction')).toHaveCount(2);
 });
 
+test('community, date, and sort filters survive a refresh until cleared, and export still costs 3', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  // Pick a community, an inclusive UTC date range, and a sort order.
+  await page.locator('[data-subreddit="quiet_orbit"]').click();
+  await fillDate(page, '#from-date', '2026-09-01');
+  await fillDate(page, '#to-date', '2026-10-31');
+  await page.locator('#sort').selectOption('score-desc');
+  await expect(page.locator(ROW)).toHaveCount(2);
+  await expect(page.locator('#match-count')).toHaveText('2');
+
+  // A refresh restores the controls and the filtered result set.
+  await page.reload();
+  await expect(page.locator('#search')).toHaveValue('quiet_orbit');
+  await expect(page.locator('#from-date')).toHaveValue('2026-09-01');
+  await expect(page.locator('#to-date')).toHaveValue('2026-10-31');
+  await expect(page.locator('#sort')).toHaveValue('score-desc');
+  await expect(page.locator('[data-subreddit="quiet_orbit"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.locator(ROW)).toHaveCount(2);
+  await expect(page.locator('#match-count')).toHaveText('2');
+  await expect(page.locator('.post-title')).toHaveText([
+    '"月光太亮" 时怎么拍银河？',
+    '城市阳台观测记录：三个月，二十七次晴天',
+  ]);
+
+  // Exporting the restored selection still deducts exactly 3 credits.
+  await confirmTopUp(page, 10);
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator(EXPORT_BUTTON).click();
+  const download = await downloadPromise;
+  const csv = await readDownload(download);
+  expect(csv.replace(/^\uFEFF/, '').trimEnd().split('\r\n')).toHaveLength(3);
+  await expect(page.locator(BALANCE)).toHaveText('7');
+  await expect(page.locator(EXPORT_STATUS)).toContainText('扣除 3 积分');
+
+  // Clearing filters also clears the saved selection, so a refresh stays empty.
+  await page.locator('#clear-filters').click();
+  await expect(page.locator('#search')).toHaveValue('');
+  await expect(page.locator('#from-date')).toHaveValue('');
+  await expect(page.locator('#to-date')).toHaveValue('');
+  await expect(page.locator('#sort')).toHaveValue('newest');
+  await expect(page.locator(ROW)).toHaveCount(15);
+
+  await page.reload();
+  await expect(page.locator('#search')).toHaveValue('');
+  await expect(page.locator('#from-date')).toHaveValue('');
+  await expect(page.locator('#to-date')).toHaveValue('');
+  await expect(page.locator('#sort')).toHaveValue('newest');
+  await expect(page.locator(ROW)).toHaveCount(15);
+  await expect(page.locator('#match-count')).toHaveText('15');
+});
+
 test('empty results and insufficient balance never charge; repeated exports deduct 3 exactly', async ({
   page,
 }) => {
