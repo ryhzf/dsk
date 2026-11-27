@@ -1,0 +1,12 @@
+name: Voice capture wallet check
+on: push
+permissions:
+  contents: read
+jobs:
+  wallet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: node --test tests/unit/wallet.test.js
